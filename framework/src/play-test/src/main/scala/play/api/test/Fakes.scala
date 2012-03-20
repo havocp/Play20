@@ -1,6 +1,7 @@
 package play.api.test;
 
 import play.api.mvc._
+import play.api.GlobalSettings
 
 /**
  * Fake HTTP headers implementation.
@@ -89,13 +90,15 @@ object FakeRequest {
  * @param additionalPlugins Additional plugins class names loaded by this application
  * @param withoutPlugins Plugins class names to disable
  * @param additionalConfiguration Additional configuration
+ * @param forceGlobal the forced GlobalSettings, overriding the configuration
  */
 case class FakeApplication(
     override val path: java.io.File = new java.io.File("."),
     override val classloader: ClassLoader = classOf[FakeApplication].getClassLoader,
     val additionalPlugins: Seq[String] = Nil,
     val withoutPlugins: Seq[String] = Nil,
-    val additionalConfiguration: Map[String, String] = Map.empty) extends play.api.Application(path, classloader, None, play.api.Mode.Test) {
+    val additionalConfiguration: Map[String, String] = Map.empty,
+    val forceGlobal: Option[GlobalSettings] = None) extends play.api.Application(path, classloader, None, play.api.Mode.Test, forceGlobal) {
 
   override def pluginClasses = {
     additionalPlugins ++ super.pluginClasses.diff(withoutPlugins)
