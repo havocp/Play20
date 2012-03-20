@@ -43,10 +43,14 @@ trait ApplicationProvider {
 /**
  * creates and initializes an Application
  * @param applicationPath location of an Application
+ * @param forceGlobal override the default or configured global object
  */
-class StaticApplication(applicationPath: File) extends ApplicationProvider {
+class StaticApplication(applicationPath: File, forceGlobal: Option[GlobalSettings]) extends ApplicationProvider {
 
-  val application = new Application(applicationPath, this.getClass.getClassLoader, None, Mode.Prod)
+  // this constructor is for ABI back-compat with 2.0
+  def this(applicationPath: File) = this(applicationPath, forceGlobal = None)
+
+  val application = new Application(applicationPath, this.getClass.getClassLoader, None, Mode.Prod, forceGlobal)
 
   Play.start(application)
 

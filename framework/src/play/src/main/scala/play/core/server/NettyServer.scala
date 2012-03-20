@@ -105,7 +105,17 @@ object NettyServer {
    * creates a NettyServer based on the application represented by applicationPath
    * @param applicationPath path to application
    */
-  def createServer(applicationPath: File): Option[NettyServer] = {
+  def createServer(applicationPath: File): Option[NettyServer] =
+    // we could just use a default arg to the other overload, except that
+    // we want to keep the 1-arg overload for ABI compat
+    createServer(applicationPath, forceGlobal = None)
+
+  /**
+   * creates a NettyServer based on the application represented by applicationPath
+   * @param applicationPath path to application
+   * @param forceGlobal the GlobalSettings object to use instead of using configured or default one
+   */
+  def createServer(applicationPath: File, forceGlobal: Option[GlobalSettings]): Option[NettyServer] = {
 
     // Manage RUNNING_PID file
     java.lang.management.ManagementFactory.getRuntimeMXBean.getName.split('@').headOption.map { pid =>
@@ -129,7 +139,7 @@ object NettyServer {
 
     try {
       Some(new NettyServer(
-        new StaticApplication(applicationPath),
+        new StaticApplication(applicationPath, forceGlobal),
         Option(System.getProperty("http.port")).map(Integer.parseInt(_)).getOrElse(9000),
         Option(System.getProperty("http.address")).getOrElse("0.0.0.0")))
     } catch {
@@ -143,17 +153,28 @@ object NettyServer {
   }
 
   /**
+   * creates a NettyServer using the given arg or getting it from user.dir system property or current dir
+   * @param applicationPathArg path to application from command line, or None to use system prop or current dir
+   * @param forceGlobal the GlobalSettings object to use instead of using configured or default one
+   */
+  def createServer(applicationPathArg: Option[String], forceGlobal: Option[GlobalSettings] = None): Option[NettyServer] = {
+    val applicationPath = applicationPathArg.orElse(
+      Option(System.getProperty("user.dir"))).map(new File(_)).filter(p => p.exists && p.isDirectory)
+    applicationPath.flatMap { applicationPath =>
+      createServer(applicationPath, forceGlobal)
+    }
+  }
+
+  /**
    * attempts to create a NettyServer based on either
    * passed in argument or `user.dir` System property or current directory
    * @param args
    */
   def main(args: Array[String]) {
-    args.headOption.orElse(
-      Option(System.getProperty("user.dir"))).map(new File(_)).filter(p => p.exists && p.isDirectory).map { applicationPath =>
-        createServer(applicationPath).getOrElse(System.exit(-1))
-      }.getOrElse {
-        println("Not a valid Play application")
-      }
+    createServer(args.headOption).getOrElse {
+      println("Not a valid Play application")
+      System.exit(-1)
+    }
   }
 
   /**

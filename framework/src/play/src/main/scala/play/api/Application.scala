@@ -28,9 +28,15 @@ import annotation.implicitNotFound
  * @param classloader the application's classloader
  * @param sources the `SourceMapper` used to retrieve source code displayed in error pages
  * @param mode `Dev` or `Prod`, passed as information for the user code
+ * @param forceGlobal force this GlobalSettings rather than finding via config or using default
  */
 @implicitNotFound(msg = "You do not have an implicit Application in scope. If you want to bring the current running Application into context, just add import play.api.Play.current")
-class Application(val path: File, val classloader: ClassLoader, val sources: Option[SourceMapper], val mode: Mode.Mode) {
+class Application(val path: File, val classloader: ClassLoader, val sources: Option[SourceMapper], val mode: Mode.Mode, private val forceGlobal: Option[GlobalSettings]) {
+
+  // this constructor is for ABI compatability with 2.0
+  def this(path: File, classloader: ClassLoader, sources: Option[SourceMapper], mode: Mode.Mode) = {
+    this(path, classloader, sources, mode, forceGlobal = None)
+  }
 
   private val initialConfiguration = Threads.withContextClassLoader(classloader) {
     Configuration.load(path, mode)
@@ -65,7 +71,7 @@ class Application(val path: File, val classloader: ClassLoader, val sources: Opt
    */
   val global: GlobalSettings = Threads.withContextClassLoader(classloader) {
     try {
-      javaGlobal.map(new j.JavaGlobalSettingsAdapter(_)).getOrElse(scalaGlobal)
+      forceGlobal.getOrElse(javaGlobal.map(new j.JavaGlobalSettingsAdapter(_)).getOrElse(scalaGlobal))
     } catch {
       case e: PlayException => throw e
       case e => throw PlayException(
